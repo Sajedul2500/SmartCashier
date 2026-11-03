@@ -1,0 +1,1621 @@
+<!DOCTYPE html>
+<html lang="bn" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>স্মার্ট ক্যাশিয়ার</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Clean Bengali Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Hind Siliguri"', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Hind Siliguri', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { 
+      -webkit-appearance: none; 
+      margin: 0; 
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #print-area, #print-area * {
+        visibility: visible;
+      }
+      #print-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 20px;
+        background: white;
+        color: black;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen lg:h-screen lg:overflow-hidden flex flex-col p-2 sm:p-2.5 selection:bg-slate-200">
+
+  <div class="w-full flex-1 flex flex-col gap-2.5 min-h-0">
+    
+    <!-- 1. TOP HEADER & QUICK STATS -->
+    <header class="bg-white rounded-xl border border-slate-200/90 px-3 py-2 shadow-xs shrink-0">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+        
+        <!-- Drawer Balance & Mobile Action Buttons -->
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2 sm:gap-2.5">
+            <div class="w-9 h-9 rounded-lg bg-slate-900 text-white flex items-center justify-center text-sm font-bold shadow-xs shrink-0">
+              <i class="fa-solid fa-vault"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-1.5 leading-none">
+                <span class="text-[10px] font-semibold text-slate-400 tracking-wide">লাইভ ভল্ট</span>
+                <span id="badge-opening-status" class="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full font-medium">ওপেনিং নেই</span>
+              </div>
+              <div class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-baseline leading-tight">
+                <span class="text-slate-400 mr-0.5 text-base font-normal">৳</span>
+                <span id="stat-drawer-total">0</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex md:hidden items-center gap-1 shrink-0">
+            <button onclick="openOpeningModal(false)" class="text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-lg border border-slate-200" title="ওপেনিং">
+              <i class="fa-solid fa-sun text-amber-500"></i>
+            </button>
+            <button onclick="openAuditModal()" class="text-[11px] font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 p-2 rounded-lg border border-amber-200" title="অডিট">
+              <i class="fa-solid fa-scale-balanced"></i>
+            </button>
+            <button onclick="openClosingModal()" class="text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded-lg shadow-xs" title="ক্লোজিং">
+              <i class="fa-solid fa-file-invoice"></i>
+            </button>
+            <button onclick="openHistoryModal()" class="text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-lg border border-slate-200" title="অতীতের ক্লোজিং">
+              <i class="fa-solid fa-clock-rotate-left"></i>
+            </button>
+            <button onclick="openResetModal()" class="text-[11px] font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 p-2 rounded-lg border border-rose-200" title="রিসেট">
+              <i class="fa-solid fa-rotate-left"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Day Stats: Opening, Deposit, Withdrawal, Bundles -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 text-center flex-1 max-w-2xl">
+          <div class="bg-slate-50 border border-slate-200/80 px-2 py-1 rounded-lg">
+            <span class="text-[9px] text-slate-500 font-semibold block leading-tight">ওপেনিং ক্যাশ</span>
+            <span class="text-xs font-bold text-slate-800" id="stat-opening-cash">৳ 0</span>
+          </div>
+          <div class="bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-lg">
+            <span class="text-[9px] text-emerald-700 font-semibold block leading-tight">মোট জমা</span>
+            <span class="text-xs font-bold text-emerald-800" id="stat-total-deposit">৳ 0</span>
+          </div>
+          <div class="bg-rose-50 border border-rose-100 px-2 py-1 rounded-lg">
+            <span class="text-[9px] text-rose-700 font-semibold block leading-tight">মোট উত্তোলন</span>
+            <span class="text-xs font-bold text-rose-800" id="stat-total-withdraw">৳ 0</span>
+          </div>
+          <div class="bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-lg">
+            <span class="text-[9px] text-indigo-700 font-semibold block leading-tight">পূর্ণ ব্যান্ডেল</span>
+            <span class="text-xs font-bold text-indigo-800" id="stat-total-bundles">0 Bundles</span>
+          </div>
+        </div>
+
+        <!-- Action Utility Controls (Desktop View) -->
+        <div class="hidden md:flex items-center gap-1.5 shrink-0">
+          <button onclick="openOpeningModal(false)" class="text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg border border-slate-200 transition">
+            <i class="fa-solid fa-sun text-amber-500 mr-1"></i>ওপেনিং
+          </button>
+          <button onclick="openAuditModal()" class="text-[11px] font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 px-2.5 py-1.5 rounded-lg border border-amber-200 transition">
+            <i class="fa-solid fa-scale-balanced mr-1"></i>ড্রয়ার অডিট
+          </button>
+          <button onclick="openClosingModal()" class="text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg shadow-xs transition">
+            <i class="fa-solid fa-file-invoice mr-1"></i>ক্লোজিং
+          </button>
+          <button onclick="openHistoryModal()" class="text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1.5 rounded-lg border border-slate-200 transition" title="অতীতের ক্লোজিং">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+          </button>
+          <button onclick="openResetModal()" class="text-[11px] font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 px-2.5 py-1.5 rounded-lg border border-rose-200 transition flex items-center gap-1" title="দিন রিসেট">
+            <i class="fa-solid fa-rotate-left"></i>রিসেট
+          </button>
+        </div>
+
+      </div>
+    </header>
+
+    <!-- 2. MAIN 3 CARDS -->
+    <main class="grid grid-cols-1 lg:grid-cols-3 gap-2.5 flex-1 min-h-0 w-full pb-3 lg:pb-0">
+
+      <!-- CARD 1: লেনদেন এন্ট্রি -->
+      <section class="bg-white rounded-xl border border-slate-200/90 p-2.5 shadow-xs flex flex-col min-h-[500px] lg:min-h-0 lg:h-full overflow-hidden">
+        <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-100 shrink-0">
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+            <h2 class="text-xs font-bold text-slate-800 uppercase tracking-wide">১. লেনদেন এন্ট্রি</h2>
+          </div>
+          <button onclick="clearCurrentActionForm()" class="text-[10px] text-slate-500 hover:text-slate-800 bg-slate-100 px-2 py-0.5 rounded transition">
+            <i class="fa-solid fa-eraser mr-1"></i>মুছুন
+          </button>
+        </div>
+        
+        <!-- Mode Switcher Tabs -->
+        <div class="bg-slate-100 p-0.5 rounded-lg grid grid-cols-3 gap-1 text-[11px] font-bold text-slate-600 mb-1.5 shrink-0">
+          <button id="mode-btn-deposit" onclick="setMode('deposit')" class="py-1 rounded-md bg-emerald-600 text-white shadow-xs transition">
+            <i class="fa-solid fa-arrow-down mr-0.5"></i>জমা
+          </button>
+          <button id="mode-btn-withdraw" onclick="setMode('withdraw')" class="py-1 rounded-md hover:text-slate-900 transition">
+            <i class="fa-solid fa-arrow-up mr-0.5"></i>উত্তোলন
+          </button>
+          <button id="mode-btn-exchange" onclick="setMode('exchange')" class="py-1 rounded-md hover:text-slate-900 transition">
+            <i class="fa-solid fa-arrows-rotate mr-0.5"></i>ভাঙতি
+          </button>
+        </div>
+
+        <!-- 1-Click Quick Exchange Bar (Exchange Mode Only) -->
+        <div id="quick-exchange-bar" class="hidden mb-1.5 bg-indigo-50/70 border border-indigo-200/80 rounded-lg p-1.5 shrink-0">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-[10px] font-bold text-indigo-900"><i class="fa-solid fa-bolt text-amber-500 mr-1"></i>কুইক ভাঙতি টেমপ্লেট:</span>
+            <button onclick="autoSuggestExchangeMatch()" class="text-[9px] bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-1.5 py-0.5 rounded transition">
+              স্মার্ট অটো-ম্যাচ
+            </button>
+          </div>
+          <div class="grid grid-cols-4 gap-1 text-[9px] font-bold">
+            <button onclick="applyQuickExchange(1000, {500:2})" class="py-1 bg-white hover:bg-indigo-100 text-slate-800 border border-indigo-200 rounded">১০০০➜৫০০×২</button>
+            <button onclick="applyQuickExchange(1000, {500:1, 100:5})" class="py-1 bg-white hover:bg-indigo-100 text-slate-800 border border-indigo-200 rounded">১০০০➜৫০০+১০০×৫</button>
+            <button onclick="applyQuickExchange(500, {100:5})" class="py-1 bg-white hover:bg-indigo-100 text-slate-800 border border-indigo-200 rounded">৫০০➜১০০×৫</button>
+            <button onclick="applyQuickExchange(100, {20:5})" class="py-1 bg-white hover:bg-indigo-100 text-slate-800 border border-indigo-200 rounded">১০০➜২০×৫</button>
+          </div>
+        </div>
+
+        <!-- Sub-Mode Tab (Primary Cash vs Adjustment / খুচরা ফেরত বা নেওয়া) -->
+        <div id="sub-adjust-tab-bar" class="grid grid-cols-2 gap-1 text-[10px] font-bold mb-1.5 shrink-0">
+          <button id="sub-btn-main" onclick="setSubTab('main')" class="py-1 px-1 rounded bg-slate-900 text-white">
+            <span id="sub-main-label">মূল ক্যাশ ইন</span>: <span id="sub-main-total">৳0</span>
+          </button>
+          <button id="sub-btn-adj" onclick="setSubTab('adj')" class="py-1 px-1 rounded bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200">
+            <span id="sub-adj-label">খুচরা সমন্বয়</span>: <span id="sub-adj-total">৳0</span>
+          </button>
+        </div>
+
+        <!-- Live Current Action Counter Status -->
+        <div id="action-status-banner" class="rounded-lg px-2.5 py-1 mb-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200/80 text-emerald-950 shrink-0">
+          <div>
+            <span class="text-[9px] font-semibold text-emerald-700 block leading-tight" id="action-status-label">নিট জমার মোট অংক</span>
+            <span class="text-base font-black text-emerald-800 leading-tight" id="action-live-total">৳ 0</span>
+          </div>
+          <span class="text-[10px] text-slate-500 font-medium" id="action-status-subtext">ইনপুট দিন</span>
+        </div>
+
+        <!-- Note Quantity Input Rows (With Live Line Total) -->
+        <div class="divide-y divide-slate-100 border border-slate-100 rounded-lg overflow-hidden flex-1 flex flex-col justify-between mb-1.5" id="action-inputs-container">
+          <!-- Injected via JS -->
+        </div>
+
+        <!-- Optional Description / Notes Input Box -->
+        <div class="mb-1.5 shrink-0">
+          <div class="relative">
+            <span class="absolute left-2.5 top-1.5 text-slate-400 text-xs">
+              <i class="fa-regular fa-comment-dots"></i>
+            </span>
+            <input type="text" id="action-note-input" placeholder="বিবরণ / অ্যাকাউন্ট নং / কাস্টমার নাম (ঐচ্ছিক)..."
+              class="w-full pl-7 pr-2 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400 placeholder:text-slate-400">
+          </div>
+        </div>
+
+        <!-- Action Submit Button -->
+        <button id="action-submit-btn" onclick="submitCurrentAction()" class="w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-bold text-xs shadow-xs transition flex items-center justify-center gap-1.5 shrink-0">
+          <i class="fa-solid fa-check text-xs"></i>
+          <span id="action-submit-text">ড্রয়ারে জমা করুন</span>
+        </button>
+      </section>
+
+      <!-- CARD 2: লাইভ ভল্ট ও ব্যান্ডেল কাউন্টার -->
+      <section class="bg-white rounded-xl border border-slate-200/90 p-2.5 shadow-xs flex flex-col min-h-[460px] lg:min-h-0 lg:h-full overflow-hidden">
+        <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-100 shrink-0">
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <h2 class="text-xs font-bold text-slate-800 uppercase tracking-wide">২. লাইভ ভল্ট ও ব্যান্ডেল</h2>
+          </div>
+          <span class="text-[10px] text-slate-400 font-medium">১০০ পিস = ১ ব্যান্ডেল</span>
+        </div>
+
+        <!-- Denomination Table -->
+        <div class="w-full flex-1 flex flex-col justify-between overflow-x-auto">
+          <table class="w-full text-left text-xs min-w-[300px]">
+            <thead>
+              <tr class="text-[10px] text-slate-400 font-medium border-b border-slate-100">
+                <th class="py-1 font-semibold w-[20%]">নোট</th>
+                <th class="py-1 text-center font-semibold w-[18%]">পিস</th>
+                <th class="py-1 text-center font-semibold w-[32%]">ব্যান্ডেল</th>
+                <th class="py-1 text-center font-semibold w-[12%]">খুচরা</th>
+                <th class="py-1 text-right font-semibold w-[28%]">টাকা</th>
+              </tr>
+            </thead>
+            <tbody id="vault-table-body" class="divide-y divide-slate-100">
+              <!-- Dynamically populated via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- CARD 3: আজকের লেনদেন হিস্ট্রি -->
+      <section class="bg-white rounded-xl border border-slate-200/90 p-2.5 shadow-xs flex flex-col min-h-[350px] lg:min-h-0 lg:h-full overflow-hidden">
+        <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-100 shrink-0">
+          <div class="flex items-center gap-1.5">
+            <i class="fa-solid fa-clock-rotate-left text-indigo-600 text-xs"></i>
+            <h2 class="text-xs font-bold text-slate-800 uppercase tracking-wide">৩. আজকের লেনদেন হিস্ট্রি</h2>
+          </div>
+          <span class="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded" id="history-count">0 Records</span>
+        </div>
+
+        <div id="history-container" class="space-y-1.5 overflow-y-auto flex-1 pr-1 min-h-[200px] lg:min-h-0">
+          <!-- Injected via JS -->
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <!-- MODAL 1: OPENING STOCK (AUTO-LOAD & STRICT ACCEPTANCE LOCK) -->
+  <div id="modal-opening" class="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl p-4 max-w-sm w-full shadow-2xl border border-slate-200 space-y-3 max-h-[92vh] flex flex-col">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-100 shrink-0">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-sm font-bold">
+            <i class="fa-solid fa-sun"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-900" id="opening-modal-title">সকালের শুরু (ওপেনিং ক্যাশ)</h3>
+            <p class="text-[10px] text-slate-400" id="opening-modal-subtitle">সর্বশেষ কার্যদিবসের ব্যালেন্স যাচাই ও গ্রহণ করুন</p>
+          </div>
+        </div>
+        <button id="btn-close-opening" onclick="closeOpeningModal()" class="text-slate-400 hover:text-slate-700 text-sm p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div id="opening-auto-notice" class="bg-amber-50 border border-amber-200/80 rounded-xl p-2.5 flex items-start gap-2 shrink-0">
+        <i class="fa-solid fa-circle-info text-amber-600 text-xs mt-0.5"></i>
+        <div class="text-[11px] text-amber-900 leading-tight">
+          <strong class="block font-bold" id="opening-banner-head">নতুন দিনের ওপেনিং গ্রহণ করুন</strong>
+          <span class="text-amber-700 text-[10px]" id="opening-banner-sub">সর্বশেষ দিনের ক্লোজিং হিসাব স্বয়ংক্রিয়ভাবে লোড করা হয়েছে। যাচাই করে নিশ্চিত করুন।</span>
+        </div>
+      </div>
+
+      <div class="overflow-y-auto flex-1 divide-y divide-slate-100 pr-1 text-xs" id="opening-inputs-container">
+        <!-- Injected via JS -->
+      </div>
+
+      <div class="pt-2 border-t border-slate-100 flex items-center justify-between shrink-0">
+        <div>
+          <span class="text-[10px] text-slate-400 block">মোট ওপেনিং ক্যাশ</span>
+          <span class="text-base font-black text-slate-900" id="modal-opening-total">৳ 0</span>
+        </div>
+        <div class="flex gap-1.5">
+          <button id="btn-cancel-opening" onclick="closeOpeningModal()" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold">
+            বাতিল
+          </button>
+          <button onclick="saveOpeningBalance()" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs flex items-center gap-1">
+            <i class="fa-solid fa-check"></i> গ্রহণ ও শুরু করুন
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: PHYSICAL DRAWER AUDIT -->
+  <div id="modal-audit" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl p-4 max-w-md w-full shadow-2xl border border-slate-200 space-y-3 max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-100 shrink-0">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm font-bold">
+            <i class="fa-solid fa-scale-balanced"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-900">ড্রয়ার ফিজিক্যাল অডিট ও হিসাব মিলানো</h3>
+            <p class="text-[10px] text-slate-400">হাতে থাকা আসল ক্যাশ গুনে পার্থক্য যাচাই করুন</p>
+          </div>
+        </div>
+        <button onclick="closeAuditModal()" class="text-slate-400 hover:text-slate-700 text-sm p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div id="audit-result-banner" class="p-2.5 rounded-xl border flex items-center justify-between text-xs bg-slate-50 border-slate-200 text-slate-700 shrink-0">
+        <div>
+          <span class="text-[10px] font-semibold block" id="audit-status-tag">সিস্টেম হিসাব vs হাতে গোনা ক্যাশ</span>
+          <span class="text-sm font-black" id="audit-status-desc">নিচে ক্যাশ গুনে নোটের সংখ্যা বসান</span>
+        </div>
+        <div class="text-right">
+          <span class="text-[10px] text-slate-400 block">পার্থক্য (Diff)</span>
+          <span class="text-sm font-black" id="audit-diff-val">৳ 0</span>
+        </div>
+      </div>
+
+      <div class="overflow-y-auto flex-1 divide-y divide-slate-100 pr-1 text-xs" id="audit-inputs-container">
+        <!-- Injected via JS -->
+      </div>
+
+      <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs shrink-0">
+        <div>
+          <span class="text-[10px] text-slate-400 block">হাতে গোনা মোট ক্যাশ:</span>
+          <span class="text-sm font-bold text-indigo-900" id="audit-total-counted">৳ 0</span>
+        </div>
+        <button onclick="closeAuditModal()" class="px-3.5 py-1.5 rounded-lg bg-slate-900 text-white font-bold hover:bg-slate-800 text-xs">
+          সম্পন্ন
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: DAILY CLOSING SHEET -->
+  <div id="modal-closing" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl p-4 sm:p-5 max-w-lg w-full shadow-2xl border border-slate-200 space-y-3 max-h-[92vh] flex flex-col">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-100 no-print shrink-0">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-bold">
+            <i class="fa-solid fa-file-invoice"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-900">দিন শেষের অফিসিয়াল ক্লোজিং শিট</h3>
+            <p class="text-[10px] text-slate-400">প্রিন্ট / PDF করে সংরক্ষণ করুন</p>
+          </div>
+        </div>
+        <button onclick="closeClosingModal()" class="text-slate-400 hover:text-slate-700 text-sm p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- PRINTABLE AREA -->
+      <div id="print-area" class="overflow-y-auto flex-1 p-2 sm:p-3 bg-white border border-slate-200 rounded-xl space-y-2.5 text-xs">
+        <div class="text-center border-b border-slate-200 pb-2">
+          <h2 class="text-base font-black text-slate-900">ক্যাশিয়ার দৈনিক ভল্ট ও ব্যান্ডেল ক্লোজিং রিপোর্ট</h2>
+          <p class="text-[11px] text-slate-500 mt-0.5" id="closing-print-date">তারিখ: -</p>
+        </div>
+
+        <div class="grid grid-cols-3 gap-1.5 sm:gap-2 text-center py-1">
+          <div class="border border-slate-200 p-1.5 rounded-lg">
+            <span class="text-[10px] text-slate-400 block">ওপেনিং ব্যালেন্স</span>
+            <strong class="text-slate-800 text-xs" id="close-report-opening">৳ 0</strong>
+          </div>
+          <div class="border border-slate-200 p-1.5 rounded-lg">
+            <span class="text-[10px] text-slate-400 block">মোট জমা (+ In)</span>
+            <strong class="text-emerald-700 text-xs" id="close-report-dep">৳ 0</strong>
+          </div>
+          <div class="border border-slate-200 p-1.5 rounded-lg">
+            <span class="text-[10px] text-slate-400 block">মোট উত্তোলন (- Out)</span>
+            <strong class="text-rose-700 text-xs" id="close-report-with">৳ 0</strong>
+          </div>
+        </div>
+
+        <div class="border border-slate-200 rounded-lg overflow-x-auto">
+          <table class="w-full text-left text-xs min-w-[340px]">
+            <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold text-[10px]">
+              <tr>
+                <th class="p-1.5">নোট</th>
+                <th class="p-1.5 text-center">পূর্ণ ব্যান্ডেল (১০০ পিস)</th>
+                <th class="p-1.5 text-center">খুচরা</th>
+                <th class="p-1.5 text-center">মোট পিস</th>
+                <th class="p-1.5 text-right">মোট টাকা</th>
+              </tr>
+            </thead>
+            <tbody id="closing-report-rows" class="divide-y divide-slate-100">
+              <!-- Dynamically populated via JS -->
+            </tbody>
+            <tfoot class="bg-slate-50 border-t border-slate-200 font-bold">
+              <tr>
+                <td colspan="4" class="p-1.5 text-right">সর্বমোট ক্লোজিং ক্যাশ:</td>
+                <td class="p-1.5 text-right font-black text-slate-900" id="close-report-grand">৳ 0</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div class="flex justify-between items-end pt-6 px-4 text-[10px] text-slate-500">
+          <div class="border-t border-slate-400 pt-1 text-center w-24">ক্যাশিয়ার স্বাক্ষর</div>
+          <div class="border-t border-slate-400 pt-1 text-center w-24">কর্মকর্তা স্বাক্ষর</div>
+        </div>
+      </div>
+
+      <div class="pt-2 border-t border-slate-100 flex items-center justify-between no-print shrink-0">
+        <button onclick="window.print()" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5">
+          <i class="fa-solid fa-print"></i>প্রিন্ট / PDF
+        </button>
+        <button onclick="finalizeAndArchiveDay()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-xs flex items-center gap-1.5">
+          <i class="fa-solid fa-box-archive"></i>দিন শেষ ও সেভ
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 4: PAST CLOSING HISTORY -->
+  <div id="modal-history" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl p-4 max-w-md w-full shadow-2xl border border-slate-200 space-y-3 max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-100 shrink-0">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm font-bold">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-900">পূর্ববর্তী দিনের ক্লোজিং আর্কাইভ</h3>
+            <p class="text-[10px] text-slate-400">সংরক্ষিত বিগত দিনের রেকর্ড</p>
+          </div>
+        </div>
+        <button onclick="closeHistoryModal()" class="text-slate-400 hover:text-slate-700 text-sm p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="overflow-y-auto flex-1 space-y-1.5 pr-1" id="history-archive-container">
+        <!-- Injected via JS -->
+      </div>
+
+      <div class="pt-2 border-t border-slate-100 flex justify-end shrink-0">
+        <button onclick="closeHistoryModal()" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-semibold">
+          বন্ধ করুন
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 5: NEW DAY RESET -->
+  <div id="modal-reset" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-4 max-w-xs w-full shadow-xl border border-slate-200 text-center space-y-3">
+      <div class="w-9 h-9 mx-auto rounded-full bg-rose-50 text-rose-600 flex items-center justify-center text-sm">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <h3 class="text-sm font-bold text-slate-900">আজকের হিসাব রিসেট করবেন?</h3>
+      <p class="text-xs text-slate-500 leading-relaxed">
+        বর্তমান ড্রয়ারের সব নোট ও লেনদেন মুছে নতুন দিন শুরু হবে।
+      </p>
+      <div class="grid grid-cols-2 gap-2 pt-1">
+        <button onclick="closeResetModal()" class="py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs">
+          বাতিল
+        </button>
+        <button onclick="executeResetDay()" class="py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs shadow-sm">
+          হ্যাঁ, নতুন দিন
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Message -->
+  <div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-4 py-2 rounded-full text-xs font-medium shadow-xl flex items-center gap-2 transition-all">
+    <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
+    <span id="toast-text">সফল হয়েছে</span>
+  </div>
+
+  <!-- JAVASCRIPT APPLICATION LOGIC -->
+  <script>
+    const DENOMS = [1000, 500, 200, 100, 50, 20, 10, 5];
+
+    let currentMode = 'deposit'; // 'deposit' | 'withdraw' | 'exchange'
+    let currentSubTab = 'main';  // 'main' (মূল ক্যাশ) | 'adj' (খুচরা সমন্বয় / ফেরত / নেওয়া)
+    let drawer = {};
+    let openingNotes = {};
+    let auditCounts = {};
+    let logs = [];
+    let pastArchives = [];
+    let lastActiveDate = '';
+    let isDayOpeningAccepted = false;
+    let isStrictLock = false;
+    let isDayClosed = false;
+
+    // Separate Note Buffers
+    let formDepositMain = {};   // কাস্টমার জমার জন্য দিলেন (+In)
+    let formDepositReturn = {}; // কাস্টমারকে ফেরত দিলাম (-Out)
+
+    let formWithdrawMain = {};  // কাস্টমারকে উত্তোলন দিলাম (-Out)
+    let formWithdrawIn = {};    // কাস্টমারের কাছ থেকে খুচরা নিলাম (+In)
+
+    let formExIn = {};          // ভাঙতির ইন (+In)
+    let formExOut = {};         // ভাঙতির আউট (-Out)
+
+    function formatMoney(amount) {
+      return Number(amount || 0).toLocaleString('en-US');
+    }
+
+    function getTimeNow() {
+      return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    }
+
+    function getDateNow() {
+      return new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function initFormState() {
+      DENOMS.forEach(d => {
+        formDepositMain[d] = 0;
+        formDepositReturn[d] = 0;
+        formWithdrawMain[d] = 0;
+        formWithdrawIn[d] = 0;
+        formExIn[d] = 0;
+        formExOut[d] = 0;
+        auditCounts[d] = 0;
+        if (openingNotes[d] === undefined) openingNotes[d] = 0;
+        if (drawer[d] === undefined) drawer[d] = 0;
+      });
+    }
+
+    // ক্লোজিং ছাড়া ব্রাউজার বা ট্যাব বন্ধ করার চেষ্টা প্রতিরোধ
+    window.addEventListener('beforeunload', (e) => {
+      if (isDayOpeningAccepted && !isDayClosed) {
+        e.preventDefault();
+        e.returnValue = 'আজকের ক্যাশ ক্লোজিং এখনও সম্পন্ন করা হয়নি! আপনি কি নিশ্চিতভাবে পেজ ত্যাগ করতে চান?';
+        return e.returnValue;
+      }
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initFormState();
+      loadAllSavedData();
+      checkNewDayTransition();
+      setMode('deposit');
+      refreshAll();
+    });
+
+    // ROBUST TRANSITION CHECK (মাঝে বন্ধ থাকলেও সর্বশেষ দিনের ক্লোজিং ব্যালেন্স বজায় থাকবে)
+    function checkNewDayTransition() {
+      const today = getDateNow();
+
+      if (!lastActiveDate) {
+        lastActiveDate = today;
+        isDayOpeningAccepted = false;
+        isDayClosed = false;
+        saveAllData();
+        promptMandatoryOpening("প্রথমবার শুরু: ওপেনিং ব্যালেন্স নির্ধারণ করুন");
+        return;
+      }
+
+      if (lastActiveDate !== today) {
+        logs = []; // নতুন দিন শুরু হওয়ায় আগের দিনের লেনদেন হিস্ট্রি ক্লিয়ার
+
+        let lastClosingSnapshot = null;
+        if (pastArchives.length > 0 && pastArchives[0].drawerSnapshot) {
+          lastClosingSnapshot = pastArchives[0].drawerSnapshot;
+        } else {
+          lastClosingSnapshot = drawer;
+        }
+
+        DENOMS.forEach(d => {
+          openingNotes[d] = lastClosingSnapshot[d] || 0;
+          if (drawer[d] === undefined) drawer[d] = openingNotes[d];
+        });
+
+        const prevDateLabel = (pastArchives.length > 0 && pastArchives[0].date) 
+          ? pastArchives[0].date 
+          : lastActiveDate;
+
+        lastActiveDate = today;
+        isDayOpeningAccepted = false;
+        isDayClosed = false;
+
+        saveAllData();
+        promptMandatoryOpening(`${prevDateLabel} এর ক্লোজিং হিসাব বর্তমান দিনের ওপেনিং এ লোড করা হয়েছে`);
+      } else if (!isDayOpeningAccepted) {
+        promptMandatoryOpening("আজকের কার্যদিবসের ওপেনিং গ্রহণ করে সিস্টেম আনলক করুন");
+      }
+    }
+
+    function promptMandatoryOpening(subNotice = "") {
+      if (subNotice) {
+        const subEl = document.getElementById('opening-banner-sub');
+        if (subEl) subEl.innerText = subNotice;
+      }
+      openOpeningModal(true);
+    }
+
+    // RENDER MAIN ACTION INPUT ROWS
+    function renderActionInputRows() {
+      const container = document.getElementById('action-inputs-container');
+      container.innerHTML = '';
+
+      let currentSource = getActiveBuffer();
+
+      DENOMS.forEach(d => {
+        const count = currentSource[d] || 0;
+        const lineTotal = count * d;
+
+        const row = document.createElement('div');
+        row.className = 'px-2 py-1 flex items-center justify-between gap-1.5 text-xs hover:bg-slate-50 transition';
+        row.innerHTML = `
+          <div class="flex items-center gap-1.5 shrink-0">
+            <span class="w-12 font-bold text-slate-800 bg-slate-100 border border-slate-200 text-center py-0.5 rounded text-[11px]">
+              ৳${d}
+            </span>
+          </div>
+
+          <div class="flex items-center gap-1">
+            <input type="number" min="0" id="input-denom-${d}" value="${count || ''}" placeholder="0"
+              oninput="handleInputChange(${d}, this.value)"
+              class="w-16 text-center py-0.5 px-1 font-bold text-xs bg-slate-50 border border-slate-200 rounded focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400 transition">
+            <span class="text-[10px] text-slate-400 font-medium">টি</span>
+          </div>
+
+          <div class="text-right min-w-[70px]">
+            <span id="line-total-${d}" class="text-xs font-bold ${lineTotal > 0 ? 'text-slate-900' : 'text-slate-300'}">
+              ৳ ${formatMoney(lineTotal)}
+            </span>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+
+      updateActionHeader();
+    }
+
+    function getActiveBuffer() {
+      if (currentMode === 'deposit') {
+        return (currentSubTab === 'main') ? formDepositMain : formDepositReturn;
+      } else if (currentMode === 'withdraw') {
+        return (currentSubTab === 'main') ? formWithdrawMain : formWithdrawIn;
+      } else if (currentMode === 'exchange') {
+        return (currentSubTab === 'main') ? formExIn : formExOut;
+      }
+      return formDepositMain;
+    }
+
+    function handleInputChange(d, val) {
+      let target = getActiveBuffer();
+      const count = Math.max(0, parseInt(val) || 0);
+      target[d] = count;
+
+      const lineTotalEl = document.getElementById(`line-total-${d}`);
+      if (lineTotalEl) {
+        const lineTotal = count * d;
+        lineTotalEl.innerText = `৳ ${formatMoney(lineTotal)}`;
+        lineTotalEl.className = `text-xs font-bold ${lineTotal > 0 ? 'text-slate-900' : 'text-slate-300'}`;
+      }
+
+      updateActionHeader();
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      currentSubTab = 'main'; // Reset to main primary side
+      
+      const btnDep = document.getElementById('mode-btn-deposit');
+      const btnWith = document.getElementById('mode-btn-withdraw');
+      const btnEx = document.getElementById('mode-btn-exchange');
+      const qkExBar = document.getElementById('quick-exchange-bar');
+
+      btnDep.className = 'py-1 rounded-md hover:text-slate-900 transition';
+      btnWith.className = 'py-1 rounded-md hover:text-slate-900 transition';
+      btnEx.className = 'py-1 rounded-md hover:text-slate-900 transition';
+
+      if (mode === 'deposit') {
+        btnDep.className = 'py-1 rounded-md bg-emerald-600 text-white shadow-xs';
+        qkExBar.classList.add('hidden');
+      } else if (mode === 'withdraw') {
+        btnWith.className = 'py-1 rounded-md bg-rose-600 text-white shadow-xs';
+        qkExBar.classList.add('hidden');
+      } else if (mode === 'exchange') {
+        btnEx.className = 'py-1 rounded-md bg-indigo-600 text-white shadow-xs';
+        qkExBar.classList.remove('hidden');
+      }
+
+      updateSubTabLabels();
+      renderActionInputRows();
+    }
+
+    function setSubTab(tab) {
+      currentSubTab = tab;
+      updateSubTabLabels();
+      renderActionInputRows();
+    }
+
+    function updateSubTabLabels() {
+      const btnMain = document.getElementById('sub-btn-main');
+      const btnAdj = document.getElementById('sub-btn-adj');
+      const lblMain = document.getElementById('sub-main-label');
+      const lblAdj = document.getElementById('sub-adj-label');
+
+      let mainSum = 0;
+      let adjSum = 0;
+
+      if (currentMode === 'deposit') {
+        lblMain.innerText = 'কাস্টমার দিলেন';
+        lblAdj.innerText = 'ফেরত দিলাম';
+        DENOMS.forEach(d => {
+          mainSum += (formDepositMain[d] || 0) * d;
+          adjSum += (formDepositReturn[d] || 0) * d;
+        });
+      } else if (currentMode === 'withdraw') {
+        lblMain.innerText = 'কাস্টমারকে দিলাম';
+        lblAdj.innerText = 'খুচরা নিলাম';
+        DENOMS.forEach(d => {
+          mainSum += (formWithdrawMain[d] || 0) * d;
+          adjSum += (formWithdrawIn[d] || 0) * d;
+        });
+      } else if (currentMode === 'exchange') {
+        lblMain.innerText = 'ইন (In)';
+        lblAdj.innerText = 'আউট (Out)';
+        DENOMS.forEach(d => {
+          mainSum += (formExIn[d] || 0) * d;
+          adjSum += (formExOut[d] || 0) * d;
+        });
+      }
+
+      document.getElementById('sub-main-total').innerText = `৳${formatMoney(mainSum)}`;
+      document.getElementById('sub-adj-total').innerText = `৳${formatMoney(adjSum)}`;
+
+      if (currentSubTab === 'main') {
+        btnMain.className = 'py-1 px-1 rounded bg-slate-900 text-white font-bold truncate shadow-xs';
+        btnAdj.className = 'py-1 px-1 rounded bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200 truncate';
+      } else {
+        btnAdj.className = 'py-1 px-1 rounded bg-slate-900 text-white font-bold truncate shadow-xs';
+        btnMain.className = 'py-1 px-1 rounded bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200 truncate';
+      }
+    }
+
+    function updateActionHeader() {
+      updateSubTabLabels();
+
+      const banner = document.getElementById('action-status-banner');
+      const label = document.getElementById('action-status-label');
+      const totalEl = document.getElementById('action-live-total');
+      const subText = document.getElementById('action-status-subtext');
+      const submitBtn = document.getElementById('action-submit-btn');
+      const submitTxt = document.getElementById('action-submit-text');
+
+      if (currentMode === 'deposit') {
+        let inSum = 0;
+        let returnSum = 0;
+        DENOMS.forEach(d => {
+          inSum += (formDepositMain[d] || 0) * d;
+          returnSum += (formDepositReturn[d] || 0) * d;
+        });
+        const netDeposit = inSum - returnSum;
+
+        banner.className = 'rounded-lg px-2.5 py-1 mb-1.5 flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200/80 text-emerald-950 shrink-0';
+        label.innerText = 'নিট জমার মোট অংক';
+        label.className = 'text-[9px] font-semibold text-emerald-700 block leading-tight';
+        totalEl.innerText = `৳ ${formatMoney(Math.max(0, netDeposit))}`;
+        totalEl.className = 'text-base font-black text-emerald-800 leading-tight';
+
+        if (returnSum > 0) {
+          subText.innerHTML = `<span class="text-rose-600 font-bold">ফেরত: ৳${formatMoney(returnSum)}</span>`;
+        } else {
+          subText.innerText = 'ইনপুট দিন';
+        }
+
+        if (netDeposit > 0 && returnSum <= inSum) {
+          submitBtn.disabled = false;
+          submitBtn.className = 'w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-bold text-xs shadow-xs transition flex items-center justify-center gap-1.5 shrink-0 cursor-pointer';
+          submitTxt.innerText = `ড্রয়ারে ৳${formatMoney(netDeposit)} জমা করুন`;
+        } else {
+          submitBtn.disabled = true;
+          submitBtn.className = 'w-full py-2 rounded-lg bg-slate-200 text-slate-400 font-bold text-xs transition flex items-center justify-center gap-1.5 shrink-0 cursor-not-allowed';
+          submitTxt.innerText = returnSum > inSum ? 'ফেরত টাকা বেশি হয়েছে!' : 'জমার অংক লিখুন';
+        }
+
+      } else if (currentMode === 'withdraw') {
+        let outSum = 0;
+        let custInSum = 0;
+        DENOMS.forEach(d => {
+          outSum += (formWithdrawMain[d] || 0) * d;
+          custInSum += (formWithdrawIn[d] || 0) * d;
+        });
+        const netWithdraw = outSum - custInSum;
+
+        banner.className = 'rounded-lg px-2.5 py-1 mb-1.5 flex items-center justify-between text-xs bg-rose-50 border border-rose-200/80 text-rose-950 shrink-0';
+        label.innerText = 'নিট উত্তোলনের মোট অংক';
+        label.className = 'text-[9px] font-semibold text-rose-700 block leading-tight';
+        totalEl.innerText = `৳ ${formatMoney(Math.max(0, netWithdraw))}`;
+        totalEl.className = 'text-base font-black text-rose-800 leading-tight';
+
+        if (custInSum > 0) {
+          subText.innerHTML = `<span class="text-emerald-700 font-bold">+খুচরা নিলাম: ৳${formatMoney(custInSum)}</span>`;
+        } else {
+          subText.innerText = 'ইনপুট দিন';
+        }
+
+        if (netWithdraw > 0 && custInSum < outSum) {
+          submitBtn.disabled = false;
+          submitBtn.className = 'w-full py-2 rounded-lg bg-rose-600 hover:bg-rose-700 active:scale-[0.99] text-white font-bold text-xs shadow-xs transition flex items-center justify-center gap-1.5 shrink-0 cursor-pointer';
+          submitTxt.innerText = `ড্রয়ার থেকে ৳${formatMoney(netWithdraw)} উত্তোলন করুন`;
+        } else {
+          submitBtn.disabled = true;
+          submitBtn.className = 'w-full py-2 rounded-lg bg-slate-200 text-slate-400 font-bold text-xs transition flex items-center justify-center gap-1.5 shrink-0 cursor-not-allowed';
+          submitTxt.innerText = custInSum >= outSum && outSum > 0 ? 'নেওয়া টাকা উত্তোলনের চেয়ে বেশি!' : 'উত্তোলনের অংক লিখুন';
+        }
+
+      } else if (currentMode === 'exchange') {
+        let inSum = 0;
+        let outSum = 0;
+        DENOMS.forEach(d => {
+          inSum += (formExIn[d] || 0) * d;
+          outSum += (formExOut[d] || 0) * d;
+        });
+
+        banner.className = 'rounded-lg px-2.5 py-1 mb-1.5 flex items-center justify-between text-xs bg-indigo-50 border border-indigo-200/80 text-indigo-950 shrink-0';
+        label.innerText = 'ভাঙতি মোট অংক (ইন = আউট)';
+        label.className = 'text-[9px] font-semibold text-indigo-700 block leading-tight';
+        totalEl.innerText = `৳ ${formatMoney(inSum)}`;
+        totalEl.className = 'text-base font-black text-indigo-800 leading-tight';
+
+        if (inSum > 0 && inSum === outSum) {
+          subText.innerHTML = `<span class="text-emerald-700 font-bold"><i class="fa-solid fa-check mr-0.5"></i>উভয় পাশে সমান</span>`;
+          submitBtn.disabled = false;
+          submitBtn.className = 'w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-bold text-xs shadow-xs transition flex items-center justify-center gap-1.5 shrink-0 cursor-pointer';
+          submitTxt.innerText = 'ভাঙতি সম্পন্ন করুন';
+        } else {
+          const diff = inSum - outSum;
+          subText.innerHTML = (inSum > 0 || outSum > 0)
+            ? (diff > 0 ? `<span class="text-amber-700 font-bold">আউটে আরও ৳${formatMoney(diff)} দিন</span>` : `<span class="text-amber-700 font-bold">আউটে ৳${formatMoney(Math.abs(diff))} বেশি!</span>`)
+            : `<span class="text-slate-400">ইনপুট দিন</span>`;
+          submitBtn.disabled = true;
+          submitBtn.className = 'w-full py-2 rounded-lg bg-slate-200 text-slate-400 font-bold text-xs transition flex items-center justify-center gap-1.5 shrink-0 cursor-not-allowed';
+          submitTxt.innerText = 'উভয় পাশ সমান করুন';
+        }
+      }
+    }
+
+    // 1-CLICK QUICK EXCHANGE TEMPLATE APPLIER
+    function applyQuickExchange(inDenom, outMap) {
+      // ড্রয়ারে আউট নোট পর্যাপ্ত আছে কিনা চেক
+      let shortage = false;
+      let shortageNote = 0;
+      for (let d in outMap) {
+        if ((outMap[d] || 0) > (drawer[d] || 0)) {
+          shortage = true;
+          shortageNote = d;
+          break;
+        }
+      }
+
+      if (shortage) {
+        showToast(`ড্রয়ারে ৳${shortageNote} এর পর্যাপ্ত নোট নেই!`, true);
+        return;
+      }
+
+      DENOMS.forEach(d => {
+        formExIn[d] = 0;
+        formExOut[d] = 0;
+      });
+
+      formExIn[inDenom] = 1;
+      for (let d in outMap) {
+        formExOut[d] = outMap[d];
+      }
+
+      currentSubTab = 'adj'; // আউট পাশে ভিউ নেওয়া
+      updateSubTabLabels();
+      renderActionInputRows();
+      showToast(`৳${inDenom} ভাঙতির টেমপ্লেট লোড হয়েছে`);
+    }
+
+    // AUTO SUGGEST MATCH FOR EXCHANGE
+    function autoSuggestExchangeMatch() {
+      let inSum = 0;
+      DENOMS.forEach(d => inSum += (formExIn[d] || 0) * d);
+
+      if (inSum <= 0) {
+        showToast('প্রথমে ইন (In) পাশে নোটের সংখ্যা লিখুন', true);
+        return;
+      }
+
+      let remaining = inSum;
+      let suggestedOut = {};
+      DENOMS.forEach(d => suggestedOut[d] = 0);
+
+      // বড় থেকে ছোট নোট অনুযায়ী ড্রয়ারের স্টক চেক করে মিলানো
+      for (let d of DENOMS) {
+        if (remaining <= 0) break;
+        if (d >= inSum) continue; // ইন-এর চেয়ে ছোট নোট দিয়ে ভাঙতি হবে
+
+        const avail = drawer[d] || 0;
+        if (avail > 0 && d <= remaining) {
+          const needed = Math.floor(remaining / d);
+          const take = Math.min(needed, avail);
+          if (take > 0) {
+            suggestedOut[d] = take;
+            remaining -= (take * d);
+          }
+        }
+      }
+
+      if (remaining > 0) {
+        showToast(`ড্রয়ারের খুচরা দিয়ে ৳${formatMoney(inSum)} পুরোপুরি মেলানো যাচ্ছে না!`, true);
+        return;
+      }
+
+      DENOMS.forEach(d => formExOut[d] = suggestedOut[d]);
+      currentSubTab = 'adj';
+      updateSubTabLabels();
+      renderActionInputRows();
+      showToast('স্মার্ট ভাঙতি অটো-ম্যাচ সম্পন্ন হয়েছে');
+    }
+
+    function clearCurrentActionForm() {
+      DENOMS.forEach(d => {
+        formDepositMain[d] = 0;
+        formDepositReturn[d] = 0;
+        formWithdrawMain[d] = 0;
+        formWithdrawIn[d] = 0;
+        formExIn[d] = 0;
+        formExOut[d] = 0;
+      });
+      document.getElementById('action-note-input').value = '';
+      currentSubTab = 'main';
+      updateSubTabLabels();
+      renderActionInputRows();
+    }
+
+    // SUBMIT ACTIONS
+    function submitCurrentAction() {
+      const noteDesc = document.getElementById('action-note-input').value.trim();
+
+      if (currentMode === 'deposit') {
+        let inSum = 0;
+        let returnSum = 0;
+        let shortage = false;
+        let shortageNote = 0;
+
+        DENOMS.forEach(d => {
+          inSum += (formDepositMain[d] || 0) * d;
+          returnSum += (formDepositReturn[d] || 0) * d;
+          // কাস্টমারকে ফেরত দেওয়া নোট ড্রয়ারে থাকতে হবে
+          if ((formDepositReturn[d] || 0) > (drawer[d] || 0)) {
+            shortage = true;
+            shortageNote = d;
+          }
+        });
+
+        const netDeposit = inSum - returnSum;
+
+        if (netDeposit <= 0) {
+          showToast('সঠিক জমার নোট লিখুন', true);
+          return;
+        }
+        if (shortage) {
+          showToast(`ড্রয়ারে ফেরত দেওয়ার জন্য ৳${shortageNote} এর নোট নেই!`, true);
+          return;
+        }
+
+        // ড্রয়ারে নেট প্রভাব: কাস্টমার দিলেন (+), ফেরত দিলেন (-)
+        DENOMS.forEach(d => {
+          drawer[d] = (drawer[d] || 0) + (formDepositMain[d] || 0) - (formDepositReturn[d] || 0);
+        });
+
+        logs.unshift({
+          id: Date.now(),
+          type: 'deposit',
+          time: getTimeNow(),
+          total: netDeposit,
+          mainIn: { ...formDepositMain },
+          returned: { ...formDepositReturn },
+          note: noteDesc
+        });
+
+        clearCurrentActionForm();
+        saveAllData();
+        refreshAll();
+        showToast(`৳ ${formatMoney(netDeposit)} ড্রয়ারে নিট জমা হয়েছে`);
+
+      } else if (currentMode === 'withdraw') {
+        let outSum = 0;
+        let custInSum = 0;
+        let shortage = false;
+        let shortageNote = 0;
+
+        DENOMS.forEach(d => {
+          outSum += (formWithdrawMain[d] || 0) * d;
+          custInSum += (formWithdrawIn[d] || 0) * d;
+          // কাস্টমারকে দেওয়ার জন্য ড্রয়ারে নোট থাকতে হবে
+          if ((formWithdrawMain[d] || 0) > (drawer[d] || 0)) {
+            shortage = true;
+            shortageNote = d;
+          }
+        });
+
+        const netWithdraw = outSum - custInSum;
+
+        if (netWithdraw <= 0) {
+          showToast('সঠিক উত্তোলনের নোট লিখুন', true);
+          return;
+        }
+        if (shortage) {
+          showToast(`ড্রয়ারে দেওয়ার জন্য ৳${shortageNote} এর নোট নেই!`, true);
+          return;
+        }
+
+        // ড্রয়ারে নেট প্রভাব: কাস্টমারকে দিলেন (-), কাস্টমারের কাছ থেকে খুচরা নিলেন (+)
+        DENOMS.forEach(d => {
+          drawer[d] = (drawer[d] || 0) - (formWithdrawMain[d] || 0) + (formWithdrawIn[d] || 0);
+        });
+
+        logs.unshift({
+          id: Date.now(),
+          type: 'withdraw',
+          time: getTimeNow(),
+          total: netWithdraw,
+          mainOut: { ...formWithdrawMain },
+          custIn: { ...formWithdrawIn },
+          note: noteDesc
+        });
+
+        clearCurrentActionForm();
+        saveAllData();
+        refreshAll();
+        showToast(`৳ ${formatMoney(netWithdraw)} উত্তোলন সম্পন্ন হয়েছে`);
+
+      } else if (currentMode === 'exchange') {
+        let inSum = 0;
+        let outSum = 0;
+        let shortage = false;
+        let shortageNote = 0;
+
+        DENOMS.forEach(d => {
+          inSum += (formExIn[d] || 0) * d;
+          outSum += (formExOut[d] || 0) * d;
+          if ((formExOut[d] || 0) > (drawer[d] || 0)) {
+            shortage = true;
+            shortageNote = d;
+          }
+        });
+
+        if (inSum === 0 || inSum !== outSum) {
+          showToast('ভাঙতির উভয় পাশের টাকা সমান নয়', true);
+          return;
+        }
+        if (shortage) {
+          showToast(`ড্রয়ারে ৳${shortageNote} এর পর্যাপ্ত নোট নেই ভাঙতি দেওয়ার মতো`, true);
+          return;
+        }
+
+        DENOMS.forEach(d => {
+          drawer[d] = (drawer[d] || 0) + (formExIn[d] || 0) - (formExOut[d] || 0);
+        });
+
+        logs.unshift({
+          id: Date.now(),
+          type: 'exchange',
+          time: getTimeNow(),
+          total: inSum,
+          inNotes: { ...formExIn },
+          outNotes: { ...formExOut },
+          note: noteDesc
+        });
+
+        clearCurrentActionForm();
+        saveAllData();
+        refreshAll();
+        showToast(`৳ ${formatMoney(inSum)} ভাঙতি সম্পন্ন হয়েছে`);
+      }
+    }
+
+    function deleteLog(id) {
+      const idx = logs.findIndex(l => l.id === id);
+      if (idx === -1) return;
+      const item = logs[idx];
+
+      if (item.type === 'deposit') {
+        DENOMS.forEach(d => {
+          const inP = (item.mainIn && item.mainIn[d]) ? item.mainIn[d] : (item.notes ? item.notes[d] : 0);
+          const retP = (item.returned && item.returned[d]) ? item.returned[d] : 0;
+          drawer[d] = Math.max(0, (drawer[d] || 0) - inP + retP);
+        });
+      } else if (item.type === 'withdraw') {
+        DENOMS.forEach(d => {
+          const outP = (item.mainOut && item.mainOut[d]) ? item.mainOut[d] : (item.notes ? item.notes[d] : 0);
+          const inP = (item.custIn && item.custIn[d]) ? item.custIn[d] : 0;
+          drawer[d] = (drawer[d] || 0) + outP - inP;
+        });
+      } else if (item.type === 'exchange') {
+        DENOMS.forEach(d => drawer[d] = (drawer[d] || 0) - (item.inNotes[d] || 0) + (item.outNotes[d] || 0));
+      }
+
+      logs.splice(idx, 1);
+      saveAllData();
+      refreshAll();
+      showToast('লেনদেন বাতিল ও ড্রয়ার সমন্বয় সম্পন্ন');
+    }
+
+    function refreshAll() {
+      let drawerTotal = 0;
+      let totalBundles = 0;
+
+      const tbody = document.getElementById('vault-table-body');
+      tbody.innerHTML = '';
+
+      DENOMS.forEach(d => {
+        const count = drawer[d] || 0;
+        const bundles = Math.floor(count / 100);
+        const loose = count % 100;
+        const val = count * d;
+
+        drawerTotal += val;
+        totalBundles += bundles;
+
+        const isLow = (count < 10);
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50/80 transition';
+        tr.innerHTML = `
+          <td class="py-1 font-bold text-slate-800">
+            <span class="inline-block px-1.5 py-0.5 rounded ${isLow ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-slate-100 text-slate-800 border-slate-200'} border text-[10px]">
+              ৳${d}
+            </span>
+          </td>
+          <td class="py-1 text-center font-bold text-xs ${isLow ? 'text-amber-700' : 'text-slate-700'}">${count}</td>
+          <td class="py-1 text-center font-bold">
+            ${bundles > 0 
+              ? `<span class="bg-indigo-100 text-indigo-800 px-1.5 py-0.2 rounded-full text-[10px] font-black">${bundles} Bundle</span>` 
+              : `<span class="text-slate-300">-</span>`}
+          </td>
+          <td class="py-1 text-center text-slate-500 font-semibold text-xs">${loose}</td>
+          <td class="py-1 text-right font-black text-slate-900 text-xs">৳${formatMoney(val)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('stat-drawer-total').innerText = formatMoney(drawerTotal);
+      document.getElementById('stat-total-bundles').innerText = `${totalBundles} Bundles`;
+
+      let openingTotal = 0;
+      DENOMS.forEach(d => openingTotal += (openingNotes[d] || 0) * d);
+      document.getElementById('stat-opening-cash').innerText = `৳ ${formatMoney(openingTotal)}`;
+
+      const badgeOpening = document.getElementById('badge-opening-status');
+      if (isDayOpeningAccepted && openingTotal > 0) {
+        badgeOpening.innerText = `ওপেনিং: ৳${formatMoney(openingTotal)}`;
+        badgeOpening.className = 'text-[9px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded-full font-medium';
+      } else {
+        badgeOpening.innerText = 'ওপেনিং বাকি';
+        badgeOpening.className = 'text-[9px] bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded-full font-medium animate-pulse';
+      }
+
+      let totalDep = 0;
+      let totalWith = 0;
+      logs.forEach(l => {
+        if (l.type === 'deposit') totalDep += l.total;
+        if (l.type === 'withdraw') totalWith += l.total;
+      });
+
+      document.getElementById('stat-total-deposit').innerText = `৳ ${formatMoney(totalDep)}`;
+      document.getElementById('stat-total-withdraw').innerText = `৳ ${formatMoney(totalWith)}`;
+
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const container = document.getElementById('history-container');
+      document.getElementById('history-count').innerText = `${logs.length} Records`;
+
+      if (logs.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-10 text-slate-400 text-xs">
+            আজ কোনো লেনদেনের রেকর্ড নেই
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = '';
+      logs.forEach(log => {
+        let badge = '';
+        let detail = '';
+
+        if (log.type === 'deposit') {
+          badge = `<span class="bg-emerald-100 text-emerald-800 px-1 py-0.2 rounded text-[9px] font-bold">জমা</span>`;
+          const parts = [];
+          const source = log.mainIn || log.notes || {};
+          DENOMS.forEach(d => { if (source[d]) parts.push(`${d}×${source[d]}`); });
+          detail = `জমা: ${parts.join(', ')}`;
+          if (log.returned) {
+            const retParts = [];
+            DENOMS.forEach(d => { if (log.returned[d]) retParts.push(`${d}×${log.returned[d]}`); });
+            if (retParts.length > 0) detail += ` | ফেরত: ${retParts.join(', ')}`;
+          }
+        } else if (log.type === 'withdraw') {
+          badge = `<span class="bg-rose-100 text-rose-800 px-1 py-0.2 rounded text-[9px] font-bold">উত্তোলন</span>`;
+          const parts = [];
+          const source = log.mainOut || log.notes || {};
+          DENOMS.forEach(d => { if (source[d]) parts.push(`${d}×${source[d]}`); });
+          detail = `উত্তোলন: ${parts.join(', ')}`;
+          if (log.custIn) {
+            const inParts = [];
+            DENOMS.forEach(d => { if (log.custIn[d]) inParts.push(`${d}×${log.custIn[d]}`); });
+            if (inParts.length > 0) detail += ` | খুচরা নেওয়া: ${inParts.join(', ')}`;
+          }
+        } else if (log.type === 'exchange') {
+          badge = `<span class="bg-indigo-100 text-indigo-800 px-1 py-0.2 rounded text-[9px] font-bold">ভাঙতি</span>`;
+          const inParts = [];
+          const outParts = [];
+          DENOMS.forEach(d => {
+            if (log.inNotes && log.inNotes[d]) inParts.push(`${d}×${log.inNotes[d]}`);
+            if (log.outNotes && log.outNotes[d]) outParts.push(`${d}×${log.outNotes[d]}`);
+          });
+          detail = `ইন: ${inParts.join(', ')} ➜ আউট: ${outParts.join(', ')}`;
+        }
+
+        const div = document.createElement('div');
+        div.className = 'bg-slate-50 rounded-lg p-2 border border-slate-200/70 flex items-center justify-between text-xs hover:bg-white transition';
+        div.innerHTML = `
+          <div class="flex-1 min-w-0 pr-1.5">
+            <div class="flex items-center gap-1.5">
+              ${badge}
+              <span class="text-slate-400 text-[10px]">${log.time}</span>
+              <strong class="text-slate-800 ml-0.5 text-xs">৳${formatMoney(log.total)}</strong>
+              ${log.note ? `<span class="text-[9px] bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded truncate max-w-[120px] font-medium"><i class="fa-regular fa-note-sticky mr-0.5"></i>${log.note}</span>` : ''}
+            </div>
+            <div class="text-[10px] text-slate-500 truncate mt-0.5">${detail}</div>
+          </div>
+          <button onclick="deleteLog(${log.id})" class="text-slate-300 hover:text-rose-600 p-1 transition" title="মুছে ফেলুন ও ড্রয়ার ঠিক করুন">
+            <i class="fa-solid fa-trash-can text-xs"></i>
+          </button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // OPENING STOCK MODAL LOGIC
+    let tempOpening = {};
+    function openOpeningModal(strict = false) {
+      isStrictLock = strict;
+
+      if (pastArchives.length > 0 && pastArchives[0].drawerSnapshot) {
+        tempOpening = { ...pastArchives[0].drawerSnapshot };
+      } else {
+        tempOpening = { ...drawer };
+      }
+
+      const container = document.getElementById('opening-inputs-container');
+      container.innerHTML = '';
+
+      DENOMS.forEach(d => {
+        const row = document.createElement('div');
+        row.className = 'py-1.5 flex items-center justify-between';
+        row.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="w-14 font-bold text-slate-800 bg-slate-50 border border-slate-200 text-center py-0.5 rounded text-xs">
+              ৳${d}
+            </span>
+            <span class="text-slate-400 text-[11px]">${formatMoney(d * (tempOpening[d] || 0))} ৳</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <input type="number" min="0" value="${tempOpening[d] || ''}" placeholder="0"
+              oninput="handleOpeningInput(${d}, this.value)"
+              class="w-16 text-center py-0.5 font-bold bg-slate-50 border border-slate-200 rounded focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400">
+            <span class="text-slate-400 text-xs">টি</span>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+
+      const closeBtn = document.getElementById('btn-close-opening');
+      const cancelBtn = document.getElementById('btn-cancel-opening');
+      if (strict) {
+        closeBtn.classList.add('hidden');
+        cancelBtn.classList.add('hidden');
+      } else {
+        closeBtn.classList.remove('hidden');
+        cancelBtn.classList.remove('hidden');
+      }
+
+      calculateOpeningTotal();
+      document.getElementById('modal-opening').classList.remove('hidden');
+    }
+
+    function handleOpeningInput(d, val) {
+      tempOpening[d] = Math.max(0, parseInt(val) || 0);
+      calculateOpeningTotal();
+    }
+
+    function calculateOpeningTotal() {
+      let sum = 0;
+      DENOMS.forEach(d => sum += (tempOpening[d] || 0) * d);
+      document.getElementById('modal-opening-total').innerText = `৳ ${formatMoney(sum)}`;
+    }
+
+    function saveOpeningBalance() {
+      DENOMS.forEach(d => {
+        const newOpen = tempOpening[d] || 0;
+        openingNotes[d] = newOpen;
+        drawer[d] = newOpen;
+      });
+
+      isDayOpeningAccepted = true;
+      isDayClosed = false;
+      lastActiveDate = getDateNow();
+
+      saveAllData();
+      closeOpeningModal();
+      refreshAll();
+      showToast('আজকের ওপেনিং ব্যালেন্স নিশ্চিত হয়েছে। শুভ সকাল!');
+    }
+
+    function closeOpeningModal() {
+      if (isStrictLock && !isDayOpeningAccepted) {
+        showToast('সিস্টেম চালু করতে ওপেনিং গ্রহণ করুন', true);
+        return;
+      }
+      document.getElementById('modal-opening').classList.add('hidden');
+    }
+
+    function openAuditModal() {
+      const container = document.getElementById('audit-inputs-container');
+      container.innerHTML = '';
+
+      DENOMS.forEach(d => {
+        const row = document.createElement('div');
+        row.className = 'py-1.5 flex items-center justify-between';
+        row.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="w-14 font-bold text-slate-800 bg-slate-50 border border-slate-200 text-center py-0.5 rounded text-xs">
+              ৳${d}
+            </span>
+            <span class="text-slate-400 text-[10px]">সিস্টেম: ${drawer[d] || 0} টি</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <input type="number" min="0" value="${auditCounts[d] || ''}" placeholder="0"
+              oninput="handleAuditInput(${d}, this.value)"
+              class="w-16 text-center py-0.5 font-bold bg-slate-50 border border-slate-200 rounded focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-400">
+            <span class="text-slate-400 text-xs">টি</span>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+
+      calculateAuditDiff();
+      document.getElementById('modal-audit').classList.remove('hidden');
+    }
+
+    function handleAuditInput(d, val) {
+      auditCounts[d] = Math.max(0, parseInt(val) || 0);
+      calculateAuditDiff();
+    }
+
+    function calculateAuditDiff() {
+      let sysTotal = 0;
+      let countedTotal = 0;
+
+      DENOMS.forEach(d => {
+        sysTotal += (drawer[d] || 0) * d;
+        countedTotal += (auditCounts[d] || 0) * d;
+      });
+
+      const diff = countedTotal - sysTotal;
+      document.getElementById('audit-total-counted').innerText = `৳ ${formatMoney(countedTotal)}`;
+      document.getElementById('audit-diff-val').innerText = `৳ ${formatMoney(Math.abs(diff))}`;
+
+      const banner = document.getElementById('audit-result-banner');
+      const tag = document.getElementById('audit-status-tag');
+      const desc = document.getElementById('audit-status-desc');
+
+      if (diff === 0) {
+        banner.className = 'p-2.5 rounded-xl border flex items-center justify-between text-xs bg-emerald-50 border-emerald-200 text-emerald-900 shrink-0';
+        tag.innerText = 'হিসাব নিখুঁতভাবে মিলেছে (Perfect Balanced)';
+        desc.innerText = 'ড্রয়ারের ক্যাশ ও সিস্টেম হিসাব সমান';
+      } else if (diff < 0) {
+        banner.className = 'p-2.5 rounded-xl border flex items-center justify-between text-xs bg-rose-50 border-rose-200 text-rose-900 shrink-0';
+        tag.innerText = 'ক্যাশ ঘাটতি (Cash Shortage)';
+        desc.innerText = `ড্রয়ারে ৳${formatMoney(Math.abs(diff))} টাকা কম রয়েছে!`;
+      } else {
+        banner.className = 'p-2.5 rounded-xl border flex items-center justify-between text-xs bg-blue-50 border-blue-200 text-blue-900 shrink-0';
+        tag.innerText = 'ক্যাশ উদ্বৃত্ত (Cash Surplus)';
+        desc.innerText = `ড্রয়ারে ৳${formatMoney(diff)} টাকা বেশি রয়েছে!`;
+      }
+    }
+
+    function closeAuditModal() {
+      document.getElementById('modal-audit').classList.add('hidden');
+    }
+
+    function openClosingModal() {
+      document.getElementById('closing-print-date').innerText = `তারিখ: ${getDateNow()} (${getTimeNow()})`;
+
+      let opTotal = 0;
+      DENOMS.forEach(d => opTotal += (openingNotes[d] || 0) * d);
+      document.getElementById('close-report-opening').innerText = `৳ ${formatMoney(opTotal)}`;
+
+      let totalDep = 0;
+      let totalWith = 0;
+      logs.forEach(l => {
+        if (l.type === 'deposit') totalDep += l.total;
+        if (l.type === 'withdraw') totalWith += l.total;
+      });
+      document.getElementById('close-report-dep').innerText = `৳ ${formatMoney(totalDep)}`;
+      document.getElementById('close-report-with').innerText = `৳ ${formatMoney(totalWith)}`;
+
+      let grandTotal = 0;
+      const rowsContainer = document.getElementById('closing-report-rows');
+      rowsContainer.innerHTML = '';
+
+      DENOMS.forEach(d => {
+        const count = drawer[d] || 0;
+        const bundles = Math.floor(count / 100);
+        const loose = count % 100;
+        const val = count * d;
+        grandTotal += val;
+
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-100';
+        tr.innerHTML = `
+          <td class="p-1.5 font-bold">৳${d}</td>
+          <td class="p-1.5 text-center font-bold text-indigo-700">${bundles > 0 ? bundles + ' Bundle' : '-'}</td>
+          <td class="p-1.5 text-center">${loose} pcs</td>
+          <td class="p-1.5 text-center font-bold">${count} pcs</td>
+          <td class="p-1.5 text-right font-bold">৳ ${formatMoney(val)}</td>
+        `;
+        rowsContainer.appendChild(tr);
+      });
+
+      document.getElementById('close-report-grand').innerText = `৳ ${formatMoney(grandTotal)}`;
+      document.getElementById('modal-closing').classList.remove('hidden');
+    }
+
+    function closeClosingModal() {
+      document.getElementById('modal-closing').classList.add('hidden');
+    }
+
+    function finalizeAndArchiveDay() {
+      let grandTotal = 0;
+      let totalBundles = 0;
+      DENOMS.forEach(d => {
+        const count = drawer[d] || 0;
+        grandTotal += count * d;
+        totalBundles += Math.floor(count / 100);
+      });
+
+      const daySummary = {
+        id: Date.now(),
+        date: getDateNow(),
+        time: getTimeNow(),
+        closingCash: grandTotal,
+        bundles: totalBundles,
+        totalLogs: logs.length,
+        drawerSnapshot: { ...drawer },
+        openingSnapshot: { ...openingNotes }
+      };
+
+      pastArchives.unshift(daySummary);
+      isDayClosed = true;
+
+      saveAllData();
+      closeClosingModal();
+      showToast('দিন শেষ করে আর্কাইভে সংরক্ষণ সম্পন্ন');
+    }
+
+    function openHistoryModal() {
+      const container = document.getElementById('history-archive-container');
+      if (pastArchives.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-8 text-slate-400 text-xs">
+            এখনও কোনো পূর্ববর্তী দিনের ক্লোজিং আর্কাইভ নেই
+          </div>
+        `;
+      } else {
+        container.innerHTML = '';
+        pastArchives.forEach(arch => {
+          const item = document.createElement('div');
+          item.className = 'border border-slate-200 rounded-lg p-2 bg-slate-50 text-xs space-y-1';
+          item.innerHTML = `
+            <div class="flex items-center justify-between">
+              <strong class="text-slate-900">${arch.date} <span class="text-slate-400 font-normal">(${arch.time})</span></strong>
+              <span class="font-black text-slate-900">৳ ${formatMoney(arch.closingCash)}</span>
+            </div>
+            <div class="flex items-center justify-between text-slate-500 text-[10px]">
+              <span>পূর্ণ ব্যান্ডেল: ${arch.bundles} টি</span>
+              <span>মোট লেনদেন: ${arch.totalLogs} টি</span>
+            </div>
+          `;
+          container.appendChild(item);
+        });
+      }
+      document.getElementById('modal-history').classList.remove('hidden');
+    }
+
+    function closeHistoryModal() {
+      document.getElementById('modal-history').classList.add('hidden');
+    }
+
+    function saveAllData() {
+      try {
+        localStorage.setItem('bank_teller_drawer_v3', JSON.stringify(drawer));
+        localStorage.setItem('bank_teller_opening_v3', JSON.stringify(openingNotes));
+        localStorage.setItem('bank_teller_logs_v3', JSON.stringify(logs));
+        localStorage.setItem('bank_teller_archives_v3', JSON.stringify(pastArchives));
+        localStorage.setItem('bank_teller_last_date_v3', lastActiveDate);
+        localStorage.setItem('bank_teller_opening_accepted_v3', JSON.stringify(isDayOpeningAccepted));
+        localStorage.setItem('bank_teller_is_closed_v3', JSON.stringify(isDayClosed));
+      } catch (e) {}
+    }
+
+    function loadAllSavedData() {
+      try {
+        const rawD = localStorage.getItem('bank_teller_drawer_v3');
+        const rawO = localStorage.getItem('bank_teller_opening_v3');
+        const rawL = localStorage.getItem('bank_teller_logs_v3');
+        const rawA = localStorage.getItem('bank_teller_archives_v3');
+        const rawDate = localStorage.getItem('bank_teller_last_date_v3');
+        const rawAccepted = localStorage.getItem('bank_teller_opening_accepted_v3');
+        const rawClosed = localStorage.getItem('bank_teller_is_closed_v3');
+
+        if (rawD) drawer = JSON.parse(rawD);
+        if (rawO) openingNotes = JSON.parse(rawO);
+        if (rawL) logs = JSON.parse(rawL);
+        if (rawA) pastArchives = JSON.parse(rawA);
+        if (rawDate) lastActiveDate = rawDate;
+        if (rawAccepted) isDayOpeningAccepted = JSON.parse(rawAccepted);
+        if (rawClosed) isDayClosed = JSON.parse(rawClosed);
+      } catch (e) {}
+    }
+
+    function openResetModal() {
+      document.getElementById('modal-reset').classList.remove('hidden');
+    }
+    function closeResetModal() {
+      document.getElementById('modal-reset').classList.add('hidden');
+    }
+    function executeResetDay() {
+      DENOMS.forEach(d => {
+        drawer[d] = 0;
+        openingNotes[d] = 0;
+        formDepositMain[d] = 0;
+        formDepositReturn[d] = 0;
+        formWithdrawMain[d] = 0;
+        formWithdrawIn[d] = 0;
+        formExIn[d] = 0;
+        formExOut[d] = 0;
+        auditCounts[d] = 0;
+      });
+
+      logs = [];
+      isDayOpeningAccepted = false;
+      isDayClosed = false;
+      clearCurrentActionForm();
+      saveAllData();
+
+      closeResetModal();
+      renderActionInputRows();
+      refreshAll();
+
+      promptMandatoryOpening("দিন রিসেট সম্পন্ন। নতুন ওপেনিং ব্যালেন্স নির্ধারণ করুন");
+      showToast('দিন রিসেট সম্পন্ন। নতুন ওপেনিং ব্যালেন্স দিন');
+    }
+
+    function showToast(msg, isError = false) {
+      const t = document.getElementById('toast');
+      const text = document.getElementById('toast-text');
+      const icon = document.getElementById('toast-icon');
+
+      text.innerText = msg;
+      icon.className = isError ? 'fa-solid fa-triangle-exclamation text-rose-400' : 'fa-solid fa-circle-check text-emerald-400';
+      t.classList.remove('hidden');
+      setTimeout(() => t.classList.add('hidden'), 2300);
+    }
+  </script>
+
+</body>
+</html>
